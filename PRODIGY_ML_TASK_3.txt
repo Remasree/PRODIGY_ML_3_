@@ -1,0 +1,53 @@
+import os
+import numpy as np
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+from skimage.io import imread
+from skimage.transform import resize
+from zipfile import ZipFile
+
+# Function to preprocess the images
+def preprocess_images(images):
+    processed_images = []
+    for image in images:
+        img = imread(image)
+        img_resized = resize(img, (150, 150))  # Resize the image to a consistent size
+        processed_images.append(img_resized.flatten())  # Flatten the image to a 1D array
+    return np.array(processed_images)
+
+# Extract the training archive
+with ZipFile('train.zip', 'r') as zip_ref:
+    zip_ref.extractall('train')
+
+# Load the training images
+train_path = 'train/train'
+cat_images = [os.path.join(train_path, 'cat', filename) for filename in os.listdir(os.path.join(train_path, 'cat'))]
+dog_images = [os.path.join(train_path, 'dog', filename) for filename in os.listdir(os.path.join(train_path, 'dog'))]
+all_images = cat_images + dog_images
+
+# Preprocess the training images
+X_train = preprocess_images(all_images)
+
+# Create labels for the training images (0 for cat, 1 for dog)
+y_train = np.concatenate((np.zeros(len(cat_images)), np.ones(len(dog_images))))
+
+# Train the SVM model
+svm_model = SVC(kernel='linear')
+svm_model.fit(X_train, y_train)
+
+# Load the test images
+with ZipFile('test1.zip', 'r') as zip_ref:
+    zip_ref.extractall('test')
+
+test_path = 'test/test1'
+test_images = [os.path.join(test_path, filename) for filename in os.listdir(test_path)]
+
+# Preprocess the test images
+X_test = preprocess_images(test_images)
+
+# Predict labels for the test images
+y_pred = svm_model.predict(X_test)
+
+# Display the predicted labels
+for image, label in zip(test_images, y_pred):
+    print(f'{image}: {"Dog" if label == 1 else "Cat"}')
